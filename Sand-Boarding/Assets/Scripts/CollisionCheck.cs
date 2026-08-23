@@ -34,7 +34,7 @@ public class CollisionCheck : MonoBehaviour
     [SerializeField, Min(0f)] private float raycastVerticalDistance = 1f;
     [SerializeField] private float rayCastDistance = 0.1f;
     [SerializeField] private float ceilingSensorVerticalOffset = 0.5f;
-    [SerializeField, Range(0f, 1f)] private float inwardRayBias = 0.25f;
+    [SerializeField, Min(0f)] private float sensorSwitchTolerance = 0.05f;
     [SerializeField, Min(0f)] private float surfaceOffset = 0.2f;
     [SerializeField, Min(0f)] private float penetrationRecoveryDistance = 0.25f;
     [SerializeField, Min(0f)] private float maxGroundSnapDistance = 0.25f;
@@ -42,8 +42,6 @@ public class CollisionCheck : MonoBehaviour
     [SerializeField] private float pushSensorHeight = 0.3f; // vertical offset above raycastOrigin, along world up
     [SerializeField, Range(0f, 15f)] private float pushSensorAngleTolerance = 5f; // slack around 0/90/180/270
     [SerializeField, Range(-1f, 1f)] private float floorAlignmentThreshold = 0.3f;
-    [SerializeField, Range(-1f, 1f)] private float ceilingAlignmentThreshold = -0.5f;
-
     RaycastHit2D pushHitLeft;
     RaycastHit2D pushHitRight;
 
@@ -113,7 +111,7 @@ public class CollisionCheck : MonoBehaviour
         CastCeilingSensors(predictedOffset);
     }
 
-        private void CastCeilingSensors(Vector2 positionOffset)
+    private void CastCeilingSensors(Vector2 positionOffset)
     {
         Vector2 origin = (Vector2)raycastOrigin.position + positionOffset + Vector2.up * ceilingSensorVerticalOffset;
 
@@ -214,31 +212,80 @@ public class CollisionCheck : MonoBehaviour
         }
     }
 
-    private void SelectGroundSensors(SensorContact sensorA, SensorContact sensorB)
+    private bool IsValidSurfaceContact(SensorContact contact, Vector2 castDirection)
     {
+        if (!contact.hit)
+        {
+            return false;
+        }
+
+        // A valid surface normal should generally face against
+        // the direction in which the sensor was cast.
+        float alignment = Vector2.Dot(
+            contact.normal.normalized,
+            -castDirection.normalized);
+
+        if (alignment < floorAlignmentThreshold)
+        {
+            return false;
+        }
+
+        return contact.signedDistance >= -penetrationRecoveryDistance && contact.signedDistance <= surfaceOffset + maxGroundSnapDistance;
+    }
+
+    private void SelectGroundSensors(SensorContact sensorA, SensorContact sensorB, Vector2 castDirection)
+    {
+        if (!IsValidSurfaceContact(sensorA, castDirection))
+        {
+            sensorA = default;
+        }
+
+        if (!IsValidSurfaceContact(sensorB, castDirection))
+        {
+            sensorB = default;
+        }
+
+        if (!sensorA.hit && !sensorB.hit)
+        {
+            PrimaryGroundSensor = default;
+            SecondaryGroundSensor = default;
+            isGrounded = false;
+            return;
+        }
+
+        bool chooseA;
+
         if (sensorA.hit && sensorB.hit)
         {
-            PrimaryGroundSensor = sensorA.signedDistance <= sensorB.signedDistance ? sensorA : sensorB;
+            float distanceDifference = Mathf.Abs(
+                sensorA.signedDistance - sensorB.signedDistance);
 
-            // SecondaryGroundSensor is the reason why are character keeps falling off on some platforms, but I have an issue
-            //Where the character keeps boucning from the edge of the platform, so I will comment this line out for now and see if it fixes the issue
-            SecondaryGroundSensor = PrimaryGroundSensor.point == sensorA.point ? sensorB : sensorA;
-            Debug.Log("Both sensors are hit: " + PrimaryGroundSensor.point + " and " + SecondaryGroundSensor.point);
-        }
-        else if (sensorA.hit)
-        {
-            PrimaryGroundSensor = sensorA;
-            SecondaryGroundSensor = sensorB;
-            Debug.Log("Sensor A is hit: " + PrimaryGroundSensor.point);
+            if (distanceDifference <= sensorSwitchTolerance)
+            {
+                // When the sensors are almost equally close, choose the
+                // normal most similar to the previously accepted surface.
+                float continuityA =
+                    Vector2.Dot(sensorA.normal, SurfaceNormal);
+
+                float continuityB =
+                    Vector2.Dot(sensorB.normal, SurfaceNormal);
+
+                chooseA = continuityA >= continuityB;
+            }
+            else
+            {
+                chooseA =
+                    sensorA.signedDistance <= sensorB.signedDistance;
+            }
         }
         else
         {
-            Debug.Log("Sensor B is hit: " + sensorB.point);
-            PrimaryGroundSensor = sensorB;
-            SecondaryGroundSensor = sensorA;
+            chooseA = sensorA.hit;
         }
 
-        isGrounded = PrimaryGroundSensor.hit;
+        PrimaryGroundSensor = chooseA ? sensorA : sensorB;
+        SecondaryGroundSensor = chooseA ? sensorB : sensorA;
+        isGrounded = true;
     }
 
     private void CastGroundSensors(Vector2 positionOffset)
@@ -257,7 +304,7 @@ public class CollisionCheck : MonoBehaviour
         SensorContact sensorA = CastSignedSensor(anchorA, direction);
         SensorContact sensorB = CastSignedSensor(anchorB, direction);
 
-        SelectGroundSensors(sensorA, sensorB);
+        SelectGroundSensors(sensorA, sensorB, direction);
 
         if (isGrounded)
         {
@@ -290,8 +337,9 @@ public class CollisionCheck : MonoBehaviour
         IsTouchingWallLeft = IsGenuineWall(pushHitLeft);
         IsTouchingWallRight = IsGenuineWall(pushHitRight);
 
-        PushDistanceLeft = IsTouchingWallLeft ? pushHitLeft.distance * 15f : float.PositiveInfinity;
-        PushDistanceRight = IsTouchingWallRight ? pushHitRight.distance * 15f : float.PositiveInfinity;
+        const float pushSkin = 0.02f;
+        PushDistanceLeft = IsTouchingWallLeft ? Mathf.Max(0f, pushHitLeft.distance - pushSkin) : float.PositiveInfinity;
+        PushDistanceRight = IsTouchingWallRight ? Mathf.Max(0f, pushHitRight.distance - pushSkin) : float.PositiveInfinity;
     }
 
         // Only treat a push-sensor hit as a wall worth blocking on if its

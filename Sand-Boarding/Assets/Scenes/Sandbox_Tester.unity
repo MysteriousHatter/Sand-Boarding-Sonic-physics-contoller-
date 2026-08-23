@@ -3497,18 +3497,13 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1005130702}
   m_CullTransparentMesh: 1
---- !u!1 &1006392072 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8171918142559427615, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
-  m_PrefabInstance: {fileID: 9136557542862113646}
-  m_PrefabAsset: {fileID: 0}
 --- !u!60 &1006392075
 PolygonCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1006392072}
+  m_GameObject: {fileID: 1127007031180744561}
   m_Enabled: 0
   serializedVersion: 3
   m_Density: 1
@@ -6070,7 +6065,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 9136557542862113651}
+  m_Father: {fileID: 3585254047777905006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1285808875
 GameObject:
@@ -6620,7 +6615,7 @@ MonoBehaviour:
   m_Priority: 10
   m_StandbyUpdate: 2
   m_LookAt: {fileID: 0}
-  m_Follow: {fileID: 9136557542862113651}
+  m_Follow: {fileID: 3585254047777905006}
   m_Lens:
     FieldOfView: 60
     OrthographicSize: 50.04
@@ -13929,6 +13924,11 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 4030961324911804948, guid: a407eb6f3b95cd745bf0823283d24307, type: 3}
   m_PrefabInstance: {fileID: 4325595726032251625}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1127007031180744561 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8171918142559427615, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+  m_PrefabInstance: {fileID: 9136557542862113646}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1178651935173003242
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14140,11 +14140,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 4226932536932587352, guid: b7273ed1d09359041863007102a70fa0, type: 3}
   m_PrefabInstance: {fileID: 2637150212076098025}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2379300668214365459 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4163200526915334293, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
-  m_PrefabInstance: {fileID: 9136557542862113646}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2637150212076098025
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14250,6 +14245,16 @@ PrefabInstance:
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1612782331339995366, guid: a407eb6f3b95cd745bf0823283d24307, type: 3}
   m_PrefabInstance: {fileID: 4325595726032251625}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3168685228125005394 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6139247144954850620, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+  m_PrefabInstance: {fileID: 9136557542862113646}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &3585254047777905006 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5695632009999880704, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+  m_PrefabInstance: {fileID: 9136557542862113646}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4164681568853950757
 PrefabInstance:
@@ -14804,6 +14809,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 398f8b7b78c31ee48ae5a37843ac6fde, type: 3}
+--- !u!1 &5119812669258841083 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4163200526915334293, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+  m_PrefabInstance: {fileID: 9136557542862113646}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6151452572836754848
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -15021,7 +15031,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2379300668214365459}
+  m_GameObject: {fileID: 5119812669258841083}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3cf496eb654958a4aa29e638ca8c9a70, type: 3}
@@ -15033,7 +15043,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2379300668214365459}
+  m_GameObject: {fileID: 5119812669258841083}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e3bc0ded067a6394d83fae2f7fc495e7, type: 3}
@@ -15044,7 +15054,7 @@ MonoBehaviour:
   <RotationDamping>k__BackingField: 724.1
   <jumpForce>k__BackingField: 41.7
   <SurfaceRotationSpeed>k__BackingField: 720
-  characterGameObject: {fileID: 9136557542862113647}
+  characterGameObject: {fileID: 3168685228125005394}
   Velocity: {x: 0, y: 0}
   <TopSpeed>k__BackingField: 72
   <Acceleration>k__BackingField: 70
@@ -15454,18 +15464,13 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1006392075}
   m_SourcePrefab: {fileID: 100100000, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
---- !u!1 &9136557542862113647 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6139247144954850620, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
-  m_PrefabInstance: {fileID: 9136557542862113646}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &9136557542862113648
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9136557542862113647}
+  m_GameObject: {fileID: 3168685228125005394}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1bb13923ce5fb6242bf5f14836e35463, type: 3}
@@ -15481,7 +15486,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9136557542862113647}
+  m_GameObject: {fileID: 3168685228125005394}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c43f8e26eb96f8742bd45ce4bc6266c5, type: 3}
@@ -15496,7 +15501,7 @@ MonoBehaviour:
   raycastVerticalDistance: 3.34
   rayCastDistance: 6.44
   ceilingSensorVerticalOffset: 2.53
-  inwardRayBias: 0
+  sensorSwitchTolerance: 0.05
   surfaceOffset: 5
   penetrationRecoveryDistance: 0.9
   maxGroundSnapDistance: 3.18
@@ -15504,19 +15509,13 @@ MonoBehaviour:
   pushSensorHeight: 1.17
   pushSensorAngleTolerance: 15
   floorAlignmentThreshold: 0.42
-  ceilingAlignmentThreshold: -0.623
---- !u!4 &9136557542862113651 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 5695632009999880704, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
-  m_PrefabInstance: {fileID: 9136557542862113646}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &9136557542862113655
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9136557542862113647}
+  m_GameObject: {fileID: 3168685228125005394}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 04cd0238481b0e24491e02c5c0a51c52, type: 3}

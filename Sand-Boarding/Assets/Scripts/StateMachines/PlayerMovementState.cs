@@ -4,9 +4,6 @@ using UnityEngine;
 public class PlayerMovementState : PlayerBaseState
 {
 
-    private Vector2 previousSurfaceNormal;
-    private bool hasPreviousNormal;
-
     public PlayerMovementState(PlayerStateMachine playerStateMachine) : base(playerStateMachine)
     {
     }
@@ -16,7 +13,7 @@ public class PlayerMovementState : PlayerBaseState
         playerStateMachine.inputReader.JumpEvent += OnJump;
         playerStateMachine.collisionCheck.EnableGroundSensors();
         playerStateMachine.forceReciever.verticalVelocity = 0f;
-        hasPreviousNormal = false;
+
         
     }
 
@@ -73,6 +70,7 @@ public class PlayerMovementState : PlayerBaseState
             UpdateGroundSpeed(input.x, tangent, fixedDeltaTime);
 
             Vector2 intendedDisplacement = tangent * playerStateMachine.groundSpeed * fixedDeltaTime;
+            collision.RefreshSensors(intendedDisplacement);
 
             if (intendedDisplacement.x > 0f && collision.IsTouchingWallRight && collision.PushDistanceRight < intendedDisplacement.x)
             {
@@ -86,7 +84,6 @@ public class PlayerMovementState : PlayerBaseState
             };
 
             // Cast from where the character is about to be.
-            collision.RefreshSensors(intendedDisplacement);
             collision.RefreshPushSensors(intendedDisplacement);
 
             if (!collision.isGrounded)
