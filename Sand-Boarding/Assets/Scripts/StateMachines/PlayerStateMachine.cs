@@ -23,9 +23,10 @@ public class PlayerStateMachine : StateMachine
     [field: SerializeField, Min(0f)] public float Friction { get; private set; } = 20f;
     [field:SerializeField] public float gravity {get; private set;}
     [SerializeField] public float slopeGravityMultiplier = 1.5f;
-    [SerializeField] private float maxFallSpeed = 30f;
+    [field: SerializeField, Min(0f)] public float MaxFallSpeed { get; private set; } = 30f;
     [SerializeField] private float airControl = 0.75f;
     [SerializeField] public float minSpeedToStick = 3f; // tweak this
+    [SerializeField, Range(0f, 90f)] public float maxWalkableAngle = 75f;
     [HideInInspector] public float groundSpeed;
     public float maxMomentumSpeed = 40f;
 

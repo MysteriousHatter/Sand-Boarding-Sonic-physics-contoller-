@@ -21,7 +21,7 @@ public class PlayerJumpState : PlayerBaseState
 
     public override void FixedTick(float fixedDeltaTime)
     {
-        playerStateMachine.collisionCheck.RefreshSensors();
+        //playerStateMachine.collisionCheck.RefreshSensors();
 
         Vector2 input = Vector2.ClampMagnitude(playerStateMachine.inputReader.MovementValue, 1f);
         float horizontalInput = input.x;

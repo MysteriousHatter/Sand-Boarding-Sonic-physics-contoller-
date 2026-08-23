@@ -4,6 +4,9 @@ using UnityEngine;
 public class PlayerMovementState : PlayerBaseState
 {
 
+    private Vector2 previousSurfaceNormal;
+    private bool hasPreviousNormal;
+
     public PlayerMovementState(PlayerStateMachine playerStateMachine) : base(playerStateMachine)
     {
     }
@@ -13,7 +16,7 @@ public class PlayerMovementState : PlayerBaseState
         playerStateMachine.inputReader.JumpEvent += OnJump;
         playerStateMachine.collisionCheck.EnableGroundSensors();
         playerStateMachine.forceReciever.verticalVelocity = 0f;
-        playerStateMachine.forceReciever.verticalVelocity = 0f; 
+        hasPreviousNormal = false;
         
     }
 
@@ -24,44 +27,96 @@ public class PlayerMovementState : PlayerBaseState
 
     public override void FixedTick(float fixedDeltaTime)
     {
-        playerStateMachine.collisionCheck.RefreshSensors();
+        CollisionCheck collision = playerStateMachine.collisionCheck;
 
-        CollisionCheck.SurfaceState surfaceState = playerStateMachine.collisionCheck.CurrentSurfaceState;
-        bool isWall = surfaceState == CollisionCheck.SurfaceState.WALL_L
-            || surfaceState == CollisionCheck.SurfaceState.WALL_R;
-        bool canStickToWall = isWall
-            && Mathf.Abs(playerStateMachine.groundSpeed) >= playerStateMachine.minSpeedToStick;
+            // Current-position check.
+            //collision.RefreshSensors(Vector2.zero);
 
-        if (!playerStateMachine.collisionCheck.isGrounded || (surfaceState != CollisionCheck.SurfaceState.Floor && !canStickToWall))
-        {
-            Debug.Log("Switching to air state");
-            DeatchFromSurface();
-            playerStateMachine.SwitchState(new PlayerAirState(playerStateMachine));
-            return;
-        }
+            if (!collision.isGrounded)
+            {
+                DetachFromSurface();
+                playerStateMachine.SwitchState(new PlayerAirState(playerStateMachine));
+                return;
+            }
 
-        float maxCorrectionDistance = 8f * fixedDeltaTime;
-        float correctionDistance = Mathf.Clamp(
-            playerStateMachine.collisionCheck.SurfaceOffset - playerStateMachine.collisionCheck.SurfaceDistance,
-            -maxCorrectionDistance,
-            maxCorrectionDistance);
+            // Require momentum to stay attached in two cases: a true overhang
+            // (gravity pulls you away from the surface, e.g. the top of a
+            // loop), or terrain steeper than maxWalkableAngle (e.g. a near-
+            // vertical wall you've slowed almost to a stop on - rather than
+            // let the character crawl/clip along the wall face at ~0 speed,
+            // it falls away like it would in real life). Ordinary half-pipe/
+            // hillside slopes below that angle always stay attached
+            // regardless of speed, since gravity there pulls you along the
+            // surface, not off it.
+            float slopeAngle = Vector2.Angle(Vector2.up, collision.SurfaceNormal);
+            bool isOverhang = Vector2.Dot(Vector2.down, collision.SurfaceNormal) > 0f;
+            bool isTooSteepToStick = slopeAngle > playerStateMachine.maxWalkableAngle;
+            bool requiresMomentum = isOverhang || isTooSteepToStick;
 
-        AlignToSurface(fixedDeltaTime);
+            if (requiresMomentum && Mathf.Abs(playerStateMachine.groundSpeed) < playerStateMachine.minSpeedToStick)
+            {
+                DetachFromSurface();
+                playerStateMachine.SwitchState(new PlayerAirState(playerStateMachine));
+                return;
+            }
 
-        Vector2 movementInput = CalculateMovement2D();
-        Vector2 surfaceTangent = Vector2.Perpendicular(playerStateMachine.collisionCheck.SurfaceNormal);
-        if (Vector2.Dot(surfaceTangent, playerStateMachine.characterGameObject.transform.right) < 0f)
-        {
-            surfaceTangent = -surfaceTangent;
-        }
+            Vector2 normal = collision.SurfaceNormal;
+            Vector2 tangent = Vector2.Perpendicular(normal);
 
-        Vector2 surfaceCorrectionVelocity = playerStateMachine.collisionCheck.SurfaceNormal * (correctionDistance / fixedDeltaTime);
-        UpdateGroundSpeed(movementInput.x, surfaceTangent, fixedDeltaTime);
+            if (Vector2.Dot(tangent, playerStateMachine.characterGameObject.transform.right) < 0f)
+            {
+                tangent = -tangent;
+            }
 
-        MoveInPhysicsStep(surfaceCorrectionVelocity + surfaceTangent * playerStateMachine.groundSpeed, fixedDeltaTime);
+            Vector2 input = CalculateMovement2D();
+
+            UpdateGroundSpeed(input.x, tangent, fixedDeltaTime);
+
+            Vector2 intendedDisplacement = tangent * playerStateMachine.groundSpeed * fixedDeltaTime;
+
+            if (intendedDisplacement.x > 0f && collision.IsTouchingWallRight && collision.PushDistanceRight < intendedDisplacement.x)
+            {
+                intendedDisplacement.x = collision.PushDistanceRight;
+                playerStateMachine.groundSpeed = 0f;
+            }
+            else if (intendedDisplacement.x < 0f && collision.IsTouchingWallLeft && -collision.PushDistanceRight < -intendedDisplacement.x)
+            {
+                intendedDisplacement.x = -collision.PushDistanceLeft;
+                playerStateMachine.groundSpeed = 0f;
+            };
+
+            // Cast from where the character is about to be.
+            collision.RefreshSensors(intendedDisplacement);
+            collision.RefreshPushSensors(intendedDisplacement);
+
+            if (!collision.isGrounded)
+            {
+                MoveInPhysicsStep(tangent * playerStateMachine.groundSpeed, fixedDeltaTime);
+
+                DetachFromSurface();
+                playerStateMachine.SwitchState(new PlayerAirState(playerStateMachine));
+                return;
+            }
+
+            SensorContact ground = collision.PrimaryGroundSensor;
+
+            float snapAmount =
+                ground.signedDistance - collision.SurfaceOffset;
+
+            Vector2 snapCorrection =
+                ground.castDirection * snapAmount;
+
+            Vector2 finalDisplacement =
+                intendedDisplacement + snapCorrection;
+
+            MoveInPhysicsStep(
+                finalDisplacement / fixedDeltaTime,
+                fixedDeltaTime);
+
+            AlignToSurface(fixedDeltaTime);
     }
 
-    private void DeatchFromSurface()
+    private void DetachFromSurface()
     {
         Vector2 normal = playerStateMachine.collisionCheck.SurfaceNormal;
         Vector2 tangent = Vector2.Perpendicular(normal);
@@ -93,10 +148,6 @@ public class PlayerMovementState : PlayerBaseState
     private void UpdateGroundSpeed(float input, Vector2 surfaceTangent, float fixedDeltaTime)
     {
         float inputDirection = Mathf.Sign(input);
-        Vector2 gravity = Vector2.down * playerStateMachine.gravity * playerStateMachine.slopeGravityMultiplier;
-        float slopeAcceleration = Vector2.Dot(gravity, surfaceTangent);
-
-        playerStateMachine.groundSpeed += slopeAcceleration * fixedDeltaTime;
 
         if (input != 0f)
         {
@@ -119,6 +170,13 @@ public class PlayerMovementState : PlayerBaseState
                 0f,
                 playerStateMachine.Friction * fixedDeltaTime);
         }
+
+                // Apply slope acceleration AFTER accel/friction so it isn't immediately
+        // overwritten by MoveTowards - this is what lets gravity actually speed
+        // you up going downhill and slow you down going uphill.
+        Vector2 gravity = Vector2.down * playerStateMachine.gravity * playerStateMachine.slopeGravityMultiplier;
+        float slopeAcceleration = Vector2.Dot(gravity, surfaceTangent);
+        playerStateMachine.groundSpeed += slopeAcceleration * fixedDeltaTime;
 
         playerStateMachine.groundSpeed = Mathf.Clamp(
             playerStateMachine.groundSpeed,
@@ -152,6 +210,8 @@ public class PlayerMovementState : PlayerBaseState
 
         characterTransform.rotation = nextRotation;
     }
+
+    
 
     private void OnJump()
     {

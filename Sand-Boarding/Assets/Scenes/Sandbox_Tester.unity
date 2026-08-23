@@ -1734,7 +1734,7 @@ Transform:
   m_GameObject: {fileID: 667236888}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1948.6, y: 114.1, z: -10}
+  m_LocalPosition: {x: 86.78344, y: 12.964777, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6649,7 +6649,7 @@ Transform:
   m_GameObject: {fileID: 1357752295}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1948.6, y: 114.1, z: -10}
+  m_LocalPosition: {x: 86.78344, y: 12.964777, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -11817,7 +11817,7 @@ SpriteShapeRenderer:
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
+  m_DynamicOccludee: 0
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
   m_LightProbeUsage: 1
@@ -15040,25 +15040,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStateMachine
   <inputReader>k__BackingField: {fileID: 8441571560925677911}
-  <FreeLookMovementSpeed>k__BackingField: 14.5
+  <FreeLookMovementSpeed>k__BackingField: 15
   <RotationDamping>k__BackingField: 724.1
   <jumpForce>k__BackingField: 41.7
   <SurfaceRotationSpeed>k__BackingField: 720
   characterGameObject: {fileID: 9136557542862113647}
   Velocity: {x: 0, y: 0}
-  <TopSpeed>k__BackingField: 50
-  <Acceleration>k__BackingField: 40
-  <Deceleration>k__BackingField: 40
-  <Friction>k__BackingField: 30
-  <gravity>k__BackingField: 45
-  slopeGravityMultiplier: 2
-  maxFallSpeed: 30
+  <TopSpeed>k__BackingField: 72
+  <Acceleration>k__BackingField: 70
+  <Deceleration>k__BackingField: 200
+  <Friction>k__BackingField: 20
+  <gravity>k__BackingField: 75
+  slopeGravityMultiplier: 1.5
+  <MaxFallSpeed>k__BackingField: 250
   airControl: 0.75
   minSpeedToStick: 3
+  maxWalkableAngle: 75
   groundSpeed: 0
-  maxMomentumSpeed: 150
+  maxMomentumSpeed: 120
   detachDistance: 0.5
-  detachForce: 0.5
+  detachForce: 0.2
   detachDuration: 0.1
   detachTimer: 0
 --- !u!1001 &8727400344688411104
@@ -15279,6 +15280,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 698742291948222628, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+      propertyPath: m_Color.b
+      value: 0.882353
+      objectReference: {fileID: 0}
+    - target: {fileID: 698742291948222628, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+      propertyPath: m_Color.g
+      value: 0.8941177
+      objectReference: {fileID: 0}
+    - target: {fileID: 698742291948222628, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
+      propertyPath: m_Color.r
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1035610030606765304, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_Size.x
       value: 5.86
@@ -15321,11 +15334,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5695632009999880704, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -87.2
       objectReference: {fileID: 0}
     - target: {fileID: 5695632009999880704, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.7
       objectReference: {fileID: 0}
     - target: {fileID: 5695632009999880704, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalRotation.w
@@ -15353,11 +15366,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8502055243530241752, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1948.6
+      value: 174
       objectReference: {fileID: 0}
     - target: {fileID: 8502055243530241752, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 114.1
+      value: 13
       objectReference: {fileID: 0}
     - target: {fileID: 8502055243530241752, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.z
@@ -15478,16 +15491,18 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   raycastOrigin: {fileID: 1212592017}
-  raycastHorizontalDistance: 2.95
-  groundSensorVerticalOffset: 0.31
-  raycastVerticalDistance: 0.77
-  rayCastDistance: 6.57
-  ceilingSensorVerticalOffset: 0.97
+  raycastHorizontalDistance: 3.15
+  groundSensorVerticalOffset: -1.35
+  raycastVerticalDistance: 3.34
+  rayCastDistance: 6.44
+  ceilingSensorVerticalOffset: 2.53
   inwardRayBias: 0
-  surfaceOffset: 3.5
-  pushRayDistance: 3.5
-  pushSensorHeight: -0.08
-  pushSensorAngleTolerance: 7.16
+  surfaceOffset: 5
+  penetrationRecoveryDistance: 0.9
+  maxGroundSnapDistance: 3.18
+  pushRayDistance: 17.1
+  pushSensorHeight: 1.17
+  pushSensorAngleTolerance: 15
   floorAlignmentThreshold: 0.42
   ceilingAlignmentThreshold: -0.623
 --- !u!4 &9136557542862113651 stripped

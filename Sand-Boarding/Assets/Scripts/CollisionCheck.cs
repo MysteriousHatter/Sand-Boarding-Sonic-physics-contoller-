@@ -1,5 +1,16 @@
 using UnityEngine;
 
+
+public struct SensorContact
+{
+    public bool hit;
+    public Collider2D collider;
+    public Vector2 point;
+    public Vector2 normal;
+    public Vector2 castDirection;
+    public float signedDistance;
+}
+
 public class CollisionCheck : MonoBehaviour
 {
     public enum SurfaceState
@@ -25,6 +36,8 @@ public class CollisionCheck : MonoBehaviour
     [SerializeField] private float ceilingSensorVerticalOffset = 0.5f;
     [SerializeField, Range(0f, 1f)] private float inwardRayBias = 0.25f;
     [SerializeField, Min(0f)] private float surfaceOffset = 0.2f;
+    [SerializeField, Min(0f)] private float penetrationRecoveryDistance = 0.25f;
+    [SerializeField, Min(0f)] private float maxGroundSnapDistance = 0.25f;
     [SerializeField] private float pushRayDistance = 0.2f;
     [SerializeField] private float pushSensorHeight = 0.3f; // vertical offset above raycastOrigin, along world up
     [SerializeField, Range(0f, 15f)] private float pushSensorAngleTolerance = 5f; // slack around 0/90/180/270
@@ -49,25 +62,97 @@ public class CollisionCheck : MonoBehaviour
     public float SurfaceDistance { get; private set; }
     public float CeilingDistance { get; private set; } = float.PositiveInfinity;
     public SurfaceState CurrentSurfaceState { get; private set; } = SurfaceState.Floor;
+    public SensorContact PrimaryGroundSensor { get; private set; }
+    public SensorContact SecondaryGroundSensor { get; private set; }
 
-    private void FixedUpdate()
-    {
-        RefreshSensors();
-    }
 
-    public void RefreshSensors()
+    public void RefreshSensors(Vector2 predictedOffset)
     {
         if (raycastOrigin == null)
         {
             return;
         }
 
-        UpdateSurfaceData();
+        CastGroundSensors(predictedOffset);
     }
+
+    // Push sensors: a pair of horizontal rays (left/right) that catch a
+    // genuine wall directly ahead of the character, since the ground/ceiling
+    // sensors only ever look down or up and have nothing checking the
+    // direction of travel. Without this, a wall the character runs into
+    // (rather than walks up) is simply never detected until it's already
+    // been driven through.
+    public void RefreshPushSensors(Vector2 predictedOffset)
+    {
+        if (raycastOrigin == null)
+        {
+            return;
+        }
+
+        CastPushSensors(predictedOffset);
+    }
+
+    // Separate from RefreshSensors: ground sensors track the floor/wall/ceiling
+    // quadrant and always run. Ceiling (head-bump) sensors are a simple pair of
+    // upward rays that only matter in the air, so they're gated behind the
+    // useCeilingSensors flag instead of always firing.
+    public void RefreshCeilingSensors(Vector2 predictedOffset)
+    {
+        if (raycastOrigin == null)
+        {
+            return;
+        }
+
+        if (!useCeilingSensors)
+        {
+            isCeilingDetected = false;
+            CeilingDistance = float.PositiveInfinity;
+            return;
+        }
+
+        CastCeilingSensors(predictedOffset);
+    }
+
+        private void CastCeilingSensors(Vector2 positionOffset)
+    {
+        Vector2 origin = (Vector2)raycastOrigin.position + positionOffset + Vector2.up * ceilingSensorVerticalOffset;
+
+        Vector2 anchorA = origin - Vector2.right * raycastHorizontalDistance;
+        Vector2 anchorB = origin + Vector2.right * raycastHorizontalDistance;
+
+        ceilingHit1 = Physics2D.Raycast(anchorA, Vector2.up, raycastVerticalDistance, groundLayer);
+        ceilingHit2 = Physics2D.Raycast(anchorB, Vector2.up, raycastVerticalDistance, groundLayer);
+
+        isCeilingDetected = ceilingHit1.collider != null || ceilingHit2.collider != null;
+
+        if (!isCeilingDetected)
+        {
+            CeilingDistance = float.PositiveInfinity;
+            return;
+        }
+
+        float distanceA = ceilingHit1.collider != null ? ceilingHit1.distance : float.PositiveInfinity;
+        float distanceB = ceilingHit2.collider != null ? ceilingHit2.distance : float.PositiveInfinity;
+        CeilingDistance = Mathf.Min(distanceA, distanceB);
+    }
+
+    public void ResetSurfaceState()
+    {
+        CurrentSurfaceState = SurfaceState.Floor;
+        isGrounded = false;
+        PrimaryGroundSensor = default;
+        SecondaryGroundSensor = default;
+        SurfaceNormal = Vector2.up;
+        SurfacePoint = default;
+        SurfaceDistance = 0f;
+    }
+
 
     public void EnableGroundSensors()
     {
         useCeilingSensors = false;
+        isCeilingDetected = false;
+        CeilingDistance = float.PositiveInfinity;
     }
 
     public void EnableCeilingSensors()
@@ -99,208 +184,351 @@ public class CollisionCheck : MonoBehaviour
         return true;
     }
 
-    private void UpdateSurfaceData()
+    private void UpdateSurfaceState(Vector2 normal)
     {
-        Vector2 right = raycastOrigin.right;
-        Vector2 down = -raycastOrigin.up;
-        Vector2 up = raycastOrigin.up;
-        float ceilingSensorRayDistance = rayCastDistance * raycastVerticalDistance;
-
-        if (useCeilingSensors)
+        float angle = Vector2.SignedAngle(Vector2.up, normal);
+        if(angle < 0f)
         {
-            groundHit1 = default;
-            groundHit2 = default;
-
-            Vector2 ceilingCenter = (Vector2)raycastOrigin.position + up * ceilingSensorVerticalOffset;
-            Vector2 ceilingSensorC = ceilingCenter + right * raycastHorizontalDistance;
-            Vector2 ceilingSensorD = ceilingCenter - right * raycastHorizontalDistance;
-            Vector2 ceilingRayDirectionC = (up - right * inwardRayBias).normalized;
-            Vector2 ceilingRayDirectionD = (up + right * inwardRayBias).normalized;
-
-            ceilingHit1 = Physics2D.Raycast(ceilingSensorC, ceilingRayDirectionC, ceilingSensorRayDistance, groundLayer);
-            ceilingHit2 = Physics2D.Raycast(ceilingSensorD, ceilingRayDirectionD, ceilingSensorRayDistance, groundLayer);
-
-            isGrounded = false;
-            bool ceilingDetected = ceilingHit1.collider != null || ceilingHit2.collider != null;
-            CeilingDistance = GetNearestCeilingDistance();
-
-            if (ceilingDetected && !isCeilingDetected)
-            {
-                Collider2D detectedCollider = ceilingHit1.collider != null
-                    ? ceilingHit1.collider
-                    : ceilingHit2.collider;
-
-                Debug.Log($"Ceiling platform detected: {detectedCollider.name}");
-            }
-
-            isCeilingDetected = ceilingDetected;
-            UpdatePushSensors();
-            return;
+            angle += 360f;
         }
-
-        ceilingHit1 = default;
-        ceilingHit2 = default;
-        isCeilingDetected = false;
-        CeilingDistance = float.PositiveInfinity;
-
-        Vector2 groundSensorCenter = (Vector2)raycastOrigin.position + up * groundSensorVerticalOffset;
-        Vector2 groundSensorA = groundSensorCenter + right * raycastHorizontalDistance;
-        Vector2 groundSensorB = groundSensorCenter - right * raycastHorizontalDistance;
-        Vector2 rayDirectionA = (down - right * inwardRayBias).normalized;
-        Vector2 rayDirectionB = (down + right * inwardRayBias).normalized;
-        float groundSensorRayDistance = GetGroundSensorRayDistance();
-
-        groundHit1 = Physics2D.Raycast(groundSensorA, rayDirectionA, groundSensorRayDistance, groundLayer);
-        groundHit2 = Physics2D.Raycast(groundSensorB, rayDirectionB, groundSensorRayDistance, groundLayer);
-
-
-
-        int hitCount = 0;
-        Vector2 normalSum = Vector2.zero;
-        Vector2 pointSum = Vector2.zero;
-
-        if (groundHit1.collider != null)
+        if(angle >= 315f && angle < 360f)
         {
-            hitCount++;
-            normalSum += groundHit1.normal;
-            pointSum += groundHit1.point;
+            CurrentSurfaceState = SurfaceState.Floor;
         }
-
-        if (groundHit2.collider != null)
+        else if(angle >= 45f && angle < 135f)
         {
-            hitCount++;
-            normalSum += groundHit2.normal;
-            pointSum += groundHit2.point;
+            CurrentSurfaceState = SurfaceState.WALL_R;
         }
-
-        isGrounded = hitCount > 0;
-        UpdatePushSensors();
-
-        if (!isGrounded)
+        else if(angle >= 135f && angle < 225f)
         {
-            return;
+            CurrentSurfaceState = SurfaceState.Ceiling;
         }
-
-        SurfaceNormal = (normalSum / hitCount).normalized;
-        SurfacePoint = pointSum / hitCount;
-        SurfaceDistance = Vector2.Dot(
-            (Vector2)raycastOrigin.position - SurfacePoint,
-            SurfaceNormal);
-
-        float worldUpAlignment = Vector2.Dot(SurfaceNormal, Vector2.up);
-        CurrentSurfaceState = worldUpAlignment > floorAlignmentThreshold ? SurfaceState.Floor : worldUpAlignment < ceilingAlignmentThreshold ? SurfaceState.Ceiling : SurfaceNormal.x > 0f ? SurfaceState.WALL_L : SurfaceState.WALL_R;
-
-    }
-
-    private float GetNearestCeilingDistance()
-    {
-        if (ceilingHit1.collider == null)
+        else if(angle >= 225f && angle < 315f)
         {
-            return ceilingHit2.collider == null ? float.PositiveInfinity : ceilingHit2.distance;
+            Debug.Log("CurrentSurfaceState: WALL_L");
+            CurrentSurfaceState = SurfaceState.WALL_L;
         }
-
-        return ceilingHit2.collider == null
-            ? ceilingHit1.distance
-            : Mathf.Min(ceilingHit1.distance, ceilingHit2.distance);
-    }
-
-    private float GetGroundSensorRayDistance()
-    {
-        float configuredRayDistance = rayCastDistance * raycastVerticalDistance;
-        float targetNormalDistance = Mathf.Max(0f, surfaceOffset + groundSensorVerticalOffset);
-        float diagonalRayDistance = targetNormalDistance * Mathf.Sqrt(1f + inwardRayBias * inwardRayBias);
-        return Mathf.Max(configuredRayDistance, diagonalRayDistance);
-    }
-
-    private void UpdatePushSensors()
-    {
-        pushHitLeft = default;
-        pushHitRight = default;
-        IsTouchingWallLeft = false;
-        IsTouchingWallRight = false;
-        PushDistanceLeft = float.PositiveInfinity;
-        PushDistanceRight = float.PositiveInfinity;
-
-        if (isGrounded && !IsNearMultipleOf90(Vector2.SignedAngle(Vector2.up, SurfaceNormal), pushSensorAngleTolerance))
+        else //floor right half
         {
-            return;
-        }
-
-        Vector2 localRight = raycastOrigin.right;
-        Vector2 localUp = raycastOrigin.up;
-        Vector2 origin = (Vector2)raycastOrigin.position + localUp * pushSensorHeight;
-
-        pushHitLeft = Physics2D.Raycast(origin, -localRight, pushRayDistance, groundLayer);
-        pushHitRight = Physics2D.Raycast(origin, localRight, pushRayDistance, groundLayer);
-
-        if (pushHitLeft.collider != null)
-        {
-            IsTouchingWallLeft = true;
-            PushDistanceLeft = pushHitLeft.distance;
-        }
-
-        if (pushHitRight.collider != null)
-        {
-            IsTouchingWallRight = true;
-            PushDistanceRight = pushHitRight.distance;
+            CurrentSurfaceState = SurfaceState.Floor;
         }
     }
 
-    private bool IsNearMultipleOf90(float angleDegrees, float tolerance)
+    private void SelectGroundSensors(SensorContact sensorA, SensorContact sensorB)
     {
-        float normalized = Mathf.Repeat(angleDegrees, 90f);
-        return normalized <= tolerance || normalized >= 90f - tolerance;
-    }
-
-    private void OnDrawGizmos()
-    {
-        if (raycastOrigin == null)
+        if (sensorA.hit && sensorB.hit)
         {
-            return;
+            PrimaryGroundSensor = sensorA.signedDistance <= sensorB.signedDistance ? sensorA : sensorB;
+
+            // SecondaryGroundSensor is the reason why are character keeps falling off on some platforms, but I have an issue
+            //Where the character keeps boucning from the edge of the platform, so I will comment this line out for now and see if it fixes the issue
+            SecondaryGroundSensor = PrimaryGroundSensor.point == sensorA.point ? sensorB : sensorA;
+            Debug.Log("Both sensors are hit: " + PrimaryGroundSensor.point + " and " + SecondaryGroundSensor.point);
+        }
+        else if (sensorA.hit)
+        {
+            PrimaryGroundSensor = sensorA;
+            SecondaryGroundSensor = sensorB;
+            Debug.Log("Sensor A is hit: " + PrimaryGroundSensor.point);
+        }
+        else
+        {
+            Debug.Log("Sensor B is hit: " + sensorB.point);
+            PrimaryGroundSensor = sensorB;
+            SecondaryGroundSensor = sensorA;
         }
 
-        Vector2 right = raycastOrigin.right;
-        Vector2 up = raycastOrigin.up;
-        Vector2 down = -raycastOrigin.up;
+        isGrounded = PrimaryGroundSensor.hit;
+    }
 
-        Vector2 groundSensorCenter = (Vector2)raycastOrigin.position + up * groundSensorVerticalOffset;
-        Vector2 groundSensorA = groundSensorCenter + right * raycastHorizontalDistance;
-        Vector2 groundSensorB = groundSensorCenter - right * raycastHorizontalDistance;
-        Vector2 rayDirectionA = (down - right * inwardRayBias).normalized;
-        Vector2 rayDirectionB = (down + right * inwardRayBias).normalized;
-        float groundSensorRayDistance = GetGroundSensorRayDistance();
-        float ceilingSensorRayDistance = rayCastDistance * raycastVerticalDistance;
+    private void CastGroundSensors(Vector2 positionOffset)
+    {
+        Vector2 direction = GroundDirection;
+        Vector2 across = new Vector2(-direction.y, direction.x);
 
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(groundSensorA, groundSensorA + rayDirectionA * groundSensorRayDistance);
+        Vector2 center =
+            (Vector2)raycastOrigin.position
+            + positionOffset
+            + direction * groundSensorVerticalOffset;
 
-        Gizmos.color = Color.blue;
-        Gizmos.DrawLine(groundSensorB, groundSensorB + rayDirectionB * groundSensorRayDistance);
+        Vector2 anchorA = center + across * raycastHorizontalDistance;
+        Vector2 anchorB = center - across * raycastHorizontalDistance;
 
-        Vector2 ceilingCenter = (Vector2)raycastOrigin.position + up * ceilingSensorVerticalOffset;
-        Vector2 ceilingSensorC = ceilingCenter + right * raycastHorizontalDistance;
-        Vector2 ceilingSensorD = ceilingCenter - right * raycastHorizontalDistance;
-        Vector2 ceilingRayDirectionC = (up - right * inwardRayBias).normalized;
-        Vector2 ceilingRayDirectionD = (up + right * inwardRayBias).normalized;
+        SensorContact sensorA = CastSignedSensor(anchorA, direction);
+        SensorContact sensorB = CastSignedSensor(anchorB, direction);
 
-
-        Vector2 pushOrigin = (Vector2)raycastOrigin.position + up * pushSensorHeight;
-        Gizmos.color = Color.green;
-        Gizmos.DrawLine(pushOrigin, pushOrigin - right * pushRayDistance);
-        Gizmos.DrawLine(pushOrigin, pushOrigin + right * pushRayDistance);
-
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawLine(ceilingSensorC, ceilingSensorC + ceilingRayDirectionC * ceilingSensorRayDistance);
-
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawLine(ceilingSensorD, ceilingSensorD + ceilingRayDirectionD * ceilingSensorRayDistance);
+        SelectGroundSensors(sensorA, sensorB);
 
         if (isGrounded)
         {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(SurfacePoint, SurfacePoint + SurfaceNormal * groundSensorRayDistance);
+            SurfaceNormal = PrimaryGroundSensor.normal;
+            SurfacePoint = PrimaryGroundSensor.point;
+            SurfaceDistance = PrimaryGroundSensor.signedDistance;
+
+            UpdateSurfaceState(SurfaceNormal);
+
+        }
+    }
+
+    private void CastPushSensors(Vector2 intendedDisplacement)
+    {
+        Vector2 anchor = (Vector2)raycastOrigin.position + Vector2.up * pushSensorHeight;
+
+        // Cast from the CURRENT position, not the predicted destination -
+        // otherwise the ray starts on the far side of anything in the travel
+        // path and can never see it. Ray length is whichever is longer:
+        // pushRayDistance as a baseline lookahead, or the actual distance
+        // we're about to move this frame - otherwise a fixed short ray
+        // simply can't reach far enough to catch a wall at high speed,
+        // letting the character tunnel straight through it.
+        float rightLength = Mathf.Max(pushRayDistance, Mathf.Max(0f, intendedDisplacement.x));
+        float leftLength = Mathf.Max(pushRayDistance, Mathf.Max(0f, -intendedDisplacement.x));
+
+        pushHitLeft = Physics2D.Raycast(anchor, Vector2.left, leftLength, groundLayer);
+        pushHitRight = Physics2D.Raycast(anchor, Vector2.right, rightLength, groundLayer);
+
+        IsTouchingWallLeft = IsGenuineWall(pushHitLeft);
+        IsTouchingWallRight = IsGenuineWall(pushHitRight);
+
+        PushDistanceLeft = IsTouchingWallLeft ? pushHitLeft.distance * 15f : float.PositiveInfinity;
+        PushDistanceRight = IsTouchingWallRight ? pushHitRight.distance * 15f : float.PositiveInfinity;
+    }
+
+        // Only treat a push-sensor hit as a wall worth blocking on if its
+    // surface is close to vertical (within pushSensorAngleTolerance of pure
+    // horizontal). Without this, the sensors would also fire against
+    // ordinary shallow slopes that the ground sensors already handle fine,
+    // stopping the character on terrain they should just be able to climb.
+    private bool IsGenuineWall(RaycastHit2D hit)
+    {
+        if (hit.collider == null)
+        {
+            return false;
         }
 
-        
+        float angleFromVertical = Vector2.Angle(hit.normal, Vector2.up) - 90f;
+        return Mathf.Abs(angleFromVertical) <= pushSensorAngleTolerance;
+    }
+
+    private SensorContact CastSignedSensor(Vector2 anchor, Vector2 direction)
+    {
+        RaycastHit2D forwardHit = Physics2D.Raycast(anchor, direction, GroundProbeDistance, groundLayer);
+
+        RaycastHit2D regressionHit = Physics2D.Raycast(anchor, -direction, penetrationRecoveryDistance, groundLayer);
+
+        if (regressionHit.collider != null)
+        {
+            return CreateContact(regressionHit, direction, -regressionHit.distance);
+        }
+
+        if (forwardHit.collider != null)
+        {
+            return CreateContact(forwardHit, direction, forwardHit.distance);
+        }
+
+        return default;
+    }
+
+    private SensorContact CreateContact(RaycastHit2D hit, Vector2 castDirection, float signedDistance)
+    {
+        Vector2 normal = hit.normal;
+
+        if (Vector2.Dot(normal, castDirection) > 0f)
+        {
+            normal = -normal;
+        }
+
+        return new SensorContact
+        {
+            hit = true,
+            collider = hit.collider,
+            point = hit.point,
+            normal = normal,
+            castDirection = castDirection,
+            signedDistance = signedDistance
+        };
+    }
+
+private float GroundProbeDistance
+{
+    get
+    {
+        return Mathf.Max(
+            rayCastDistance,
+            surfaceOffset + maxGroundSnapDistance);
     }
 }
+
+   public Vector2 GroundDirection
+    {
+        get
+        {
+            switch (CurrentSurfaceState)
+            {
+                case SurfaceState.Floor:
+                    return Vector2.down;
+
+                case SurfaceState.WALL_L:
+                    return Vector2.left;
+
+                case SurfaceState.WALL_R:
+                    return Vector2.right;
+
+                case SurfaceState.Ceiling:
+                    return Vector2.up;
+
+                default:
+                    return Vector2.down;
+            }
+        }
+    }
+private void OnDrawGizmos()
+{
+    if (raycastOrigin == null)
+    {
+        return;
+    }
+
+    Vector2 direction = GroundDirection;
+    Vector2 across = new Vector2(-direction.y, direction.x);
+
+    Vector2 center = (Vector2)raycastOrigin.position + direction * groundSensorVerticalOffset;
+
+    Vector2 anchorA = center + across * raycastHorizontalDistance;
+
+    Vector2 anchorB = center - across * raycastHorizontalDistance;
+
+    // Shows the current cardinal ground direction.
+    Gizmos.color = Color.white;
+    Gizmos.DrawLine(raycastOrigin.position, (Vector2)raycastOrigin.position + direction * 0.4f);
+
+    DrawSensorGizmo(anchorA, direction, Color.green, Color.red);
+
+    DrawSensorGizmo(anchorB, direction, Color.cyan, Color.magenta);
+
+    DrawContactGizmo(PrimaryGroundSensor, Color.yellow);
+
+    DrawContactGizmo(SecondaryGroundSensor, Color.white);
+
+        // Ceiling sensors always cast straight up in world space, independent
+    // of the current ground quadrant.
+    Vector2 ceilingOrigin = (Vector2)raycastOrigin.position + Vector2.up * ceilingSensorVerticalOffset;
+
+    Vector2 ceilingAnchorA = ceilingOrigin - Vector2.right * raycastHorizontalDistance;
+    Vector2 ceilingAnchorB = ceilingOrigin + Vector2.right * raycastHorizontalDistance;
+
+    // Shows where the ceiling sensor pair sits relative to raycastOrigin.
+    Gizmos.color = Color.white;
+    Gizmos.DrawLine(raycastOrigin.position, ceilingOrigin);
+
+    DrawCeilingSensorGizmo(ceilingAnchorA, ceilingHit1);
+
+    DrawCeilingSensorGizmo(ceilingAnchorB, ceilingHit2);
+
+      // Push sensors fire horizontally left/right from a single anchor point
+    // at pushSensorHeight above raycastOrigin, independent of the current
+    // ground quadrant.
+    Vector2 pushAnchor =
+        (Vector2)raycastOrigin.position
+        + Vector2.up * pushSensorHeight;
+
+    Gizmos.color = Color.white;
+    Gizmos.DrawLine(raycastOrigin.position, pushAnchor);
+    Gizmos.DrawWireSphere(pushAnchor, 0.025f);
+
+    DrawPushSensorGizmo(pushAnchor, Vector2.left, pushHitLeft, IsTouchingWallLeft);
+
+    DrawPushSensorGizmo(pushAnchor, Vector2.right, pushHitRight, IsTouchingWallRight);
+}
+
+private void DrawSensorGizmo(Vector2 anchor, Vector2 direction, Color forwardColor, Color recoveryColor)
+    {
+        // Sensor anchor.
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(anchor, 0.025f);
+
+        // Forward surface search.
+        Gizmos.color = forwardColor;
+        Gizmos.DrawLine(anchor, anchor + direction * GroundProbeDistance);
+
+        // Backward penetration-recovery search.
+        Gizmos.color = recoveryColor;
+        Gizmos.DrawLine(anchor, anchor - direction * penetrationRecoveryDistance);
+
+        // Desired surface-offset position.
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(anchor + direction * surfaceOffset, 0.02f);
+    }
+
+        // isWall reflects IsGenuineWall's angle-tolerance filter, not just
+    // whether the ray hit something - so you can see the difference between
+    // "grazed a shallow slope, correctly ignored" and "found a real wall,
+    // will stop movement".
+    private void DrawPushSensorGizmo(Vector2 anchor, Vector2 direction, RaycastHit2D hit, bool isWall)
+    {
+        bool hasHit = hit.collider != null;
+        float rayLength = hasHit ? hit.distance : pushRayDistance;
+
+        Color rayColor;
+        if (!hasHit)
+        {
+            rayColor = Color.blue;
+        }
+        else if (isWall)
+        {
+            rayColor = Color.red;
+        }
+        else
+        {
+            // Hit something, but too shallow an angle to count as a wall.
+            rayColor = new Color(1f, 0.5f, 0f);
+        }
+
+        Gizmos.color = rayColor;
+        Gizmos.DrawLine(anchor, anchor + direction * rayLength);
+
+        if (hasHit)
+        {
+            Gizmos.color = isWall ? Color.magenta : new Color(1f, 0.5f, 0f);
+            Gizmos.DrawSphere(hit.point, 0.035f);
+            Gizmos.DrawLine(hit.point, hit.point + hit.normal * 0.3f);
+        }
+    }
+
+    private void DrawContactGizmo(SensorContact contact, Color color)
+    {
+        if (!contact.hit)
+        {
+            return;
+        }
+
+        Gizmos.color = color;
+        Gizmos.DrawSphere(contact.point, 0.035f);
+
+        // Contact normal.
+        Gizmos.DrawLine(contact.point, contact.point + contact.normal * 0.3f);
+    }
+
+    private void DrawCeilingSensorGizmo(Vector2 anchor, RaycastHit2D hit)
+    {
+        // Sensor anchor.
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(anchor, 0.025f);
+
+        bool hasHit = hit.collider != null;
+        float rayLength = hasHit ? hit.distance : raycastVerticalDistance;
+
+        // Upward search ray - orange while clear, red for the portion that
+        // actually found something.
+        Gizmos.color = hasHit ? Color.red : new Color(1f, 0.5f, 0f);
+        Gizmos.DrawLine(anchor, anchor + Vector2.up * rayLength);
+
+        if (hasHit)
+        {
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawSphere(hit.point, 0.035f);
+            Gizmos.DrawLine(hit.point, hit.point + hit.normal * 0.3f);
+        }
+    }
+}
+
