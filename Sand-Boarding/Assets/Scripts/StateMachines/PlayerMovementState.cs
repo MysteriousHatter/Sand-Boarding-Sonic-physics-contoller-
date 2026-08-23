@@ -70,21 +70,37 @@ public class PlayerMovementState : PlayerBaseState
             UpdateGroundSpeed(input.x, tangent, fixedDeltaTime);
 
             Vector2 intendedDisplacement = tangent * playerStateMachine.groundSpeed * fixedDeltaTime;
+            // Update the ground mode first.
             collision.RefreshSensors(intendedDisplacement);
 
-            if (intendedDisplacement.x > 0f && collision.IsTouchingWallRight && collision.PushDistanceRight < intendedDisplacement.x)
+            // Get current-frame push information before reading it.
+            collision.RefreshPushSensors(intendedDisplacement);
+            // A horizontal ray pointing into the current supporting wall // should not stop surface movement.
+            bool leftIsGroundSupport = collision.isGrounded && collision.CurrentSurfaceState == CollisionCheck.SurfaceState.WALL_L;
+
+            bool rightIsGroundSupport = collision.isGrounded && collision.CurrentSurfaceState == CollisionCheck.SurfaceState.WALL_R;
+
+            bool displacementWasClamped = false;
+
+            if (intendedDisplacement.x > 0f && collision.IsTouchingWallRight && !rightIsGroundSupport && collision.PushDistanceRight < intendedDisplacement.x)
             {
                 intendedDisplacement.x = collision.PushDistanceRight;
                 playerStateMachine.groundSpeed = 0f;
+                displacementWasClamped = true;
             }
-            else if (intendedDisplacement.x < 0f && collision.IsTouchingWallLeft && -collision.PushDistanceRight < -intendedDisplacement.x)
+            else if (intendedDisplacement.x < 0f && collision.IsTouchingWallLeft && !leftIsGroundSupport && collision.PushDistanceLeft < -intendedDisplacement.x)
             {
                 intendedDisplacement.x = -collision.PushDistanceLeft;
                 playerStateMachine.groundSpeed = 0f;
-            };
+                displacementWasClamped = true;
+            }
 
-            // Cast from where the character is about to be.
-            collision.RefreshPushSensors(intendedDisplacement);
+            // If an actual obstacle changed the destination,
+            // refresh the ground sensors using the corrected displacement.
+            if (displacementWasClamped)
+            {
+                collision.RefreshSensors(intendedDisplacement);
+            }
 
             if (!collision.isGrounded)
             {
@@ -122,9 +138,10 @@ public class PlayerMovementState : PlayerBaseState
             tangent = -tangent;
         }
 
+        float outwardForce = playerStateMachine.collisionCheck.CurrentSurfaceState == CollisionCheck.SurfaceState.Floor ? 0f : playerStateMachine.detachForce;
         
         Vector2 detachVelocity = tangent * playerStateMachine.groundSpeed
-            + normal * playerStateMachine.detachForce;
+            + normal * outwardForce;
         playerStateMachine.forceReciever.AddForce(detachVelocity);
 
         playerStateMachine.detachTimer = playerStateMachine.detachDuration;
