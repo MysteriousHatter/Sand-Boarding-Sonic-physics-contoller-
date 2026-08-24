@@ -1734,7 +1734,7 @@ Transform:
   m_GameObject: {fileID: 667236888}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 86.78344, y: 12.964777, z: -10}
+  m_LocalPosition: {x: 1674.7834, y: 60.964775, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6644,7 +6644,7 @@ Transform:
   m_GameObject: {fileID: 1357752295}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 86.78344, y: 12.964777, z: -10}
+  m_LocalPosition: {x: 1674.7834, y: 60.964775, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -15057,7 +15057,7 @@ MonoBehaviour:
   characterGameObject: {fileID: 3168685228125005394}
   Velocity: {x: 0, y: 0}
   <TopSpeed>k__BackingField: 72
-  <Acceleration>k__BackingField: 70
+  <Acceleration>k__BackingField: 90
   <Deceleration>k__BackingField: 200
   <Friction>k__BackingField: 20
   <gravity>k__BackingField: 75
@@ -15065,7 +15065,7 @@ MonoBehaviour:
   <MaxFallSpeed>k__BackingField: 250
   airControl: 0.75
   minSpeedToStick: 3
-  maxWalkableAngle: 75
+  maxWalkableAngle: 67.9
   groundSpeed: 0
   maxMomentumSpeed: 120
   detachDistance: 0.5
@@ -15376,11 +15376,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8502055243530241752, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 174
+      value: 1762
       objectReference: {fileID: 0}
     - target: {fileID: 8502055243530241752, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 13
+      value: 61
       objectReference: {fileID: 0}
     - target: {fileID: 8502055243530241752, guid: 08b41ea81844a6e4c9150c094916ecf4, type: 3}
       propertyPath: m_LocalPosition.z
@@ -15501,7 +15501,7 @@ MonoBehaviour:
   raycastVerticalDistance: 3.34
   rayCastDistance: 6.44
   ceilingSensorVerticalOffset: 2.53
-  sensorSwitchTolerance: 0.05
+  sensorSwitchTolerance: 0.25
   surfaceOffset: 5
   penetrationRecoveryDistance: 0.9
   maxGroundSnapDistance: 3.18
@@ -15509,6 +15509,8 @@ MonoBehaviour:
   pushSensorHeight: 1.17
   pushSensorAngleTolerance: 15
   floorAlignmentThreshold: 0.3
+  normalBlendDistance: 0.25
+  normalBlendMaxAngle: 60
 --- !u!114 &9136557542862113655
 MonoBehaviour:
   m_ObjectHideFlags: 0

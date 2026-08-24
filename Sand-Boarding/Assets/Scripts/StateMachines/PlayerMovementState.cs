@@ -107,11 +107,17 @@ public class PlayerMovementState : PlayerBaseState
                 // The predicted position might have landed in a tiny collider
                 // seam or just beyond the edge of one ray.
                 collision.RefreshSensors(Vector2.zero);
-                MoveInPhysicsStep(tangent * playerStateMachine.groundSpeed, fixedDeltaTime);
+                // Only detach if the fallback also failed.
+                if (!collision.isGrounded)
+                {
+                    MoveInPhysicsStep(tangent * playerStateMachine.groundSpeed, fixedDeltaTime);
 
-                DetachFromSurface();
-                playerStateMachine.SwitchState(new PlayerAirState(playerStateMachine));
-                return;
+                    DetachFromSurface();
+
+                    playerStateMachine.SwitchState(new PlayerAirState(playerStateMachine));
+
+                    return;
+                }
             }
 
             SensorContact ground = collision.PrimaryGroundSensor;
@@ -169,32 +175,32 @@ public class PlayerMovementState : PlayerBaseState
 
         if (input != 0f)
         {
-            bool isReversing = playerStateMachine.groundSpeed != 0f
-                && Mathf.Sign(playerStateMachine.groundSpeed) != inputDirection;
-            float rate = isReversing
-                ? playerStateMachine.Deceleration
-                : playerStateMachine.Acceleration;
+            bool isReversing = playerStateMachine.groundSpeed != 0f && Mathf.Sign(playerStateMachine.groundSpeed) != inputDirection;
+            float rate = isReversing ? playerStateMachine.Deceleration : playerStateMachine.Acceleration;
             float targetSpeed = input * playerStateMachine.TopSpeed;
 
-            playerStateMachine.groundSpeed = Mathf.MoveTowards(
-                playerStateMachine.groundSpeed,
-                targetSpeed,
-                rate * fixedDeltaTime);
+            playerStateMachine.groundSpeed = Mathf.MoveTowards(playerStateMachine.groundSpeed, targetSpeed,rate * fixedDeltaTime);
         }
         else
         {
-            playerStateMachine.groundSpeed = Mathf.MoveTowards(
-                playerStateMachine.groundSpeed,
-                0f,
-                playerStateMachine.Friction * fixedDeltaTime);
+            playerStateMachine.groundSpeed = Mathf.MoveTowards(playerStateMachine.groundSpeed, 0f, playerStateMachine.Friction * fixedDeltaTime);
         }
 
-                // Apply slope acceleration AFTER accel/friction so it isn't immediately
+        // Apply slope acceleration AFTER accel/friction so it isn't immediately
         // overwritten by MoveTowards - this is what lets gravity actually speed
         // you up going downhill and slow you down going uphill.
         Vector2 gravity = Vector2.down * playerStateMachine.gravity * playerStateMachine.slopeGravityMultiplier;
         float slopeAcceleration = Vector2.Dot(gravity, surfaceTangent);
-        playerStateMachine.groundSpeed += slopeAcceleration * fixedDeltaTime;
+        bool shouldRemainStopped = Mathf.Abs(input) < 0.01f && Mathf.Abs(playerStateMachine.groundSpeed) < 1f && Mathf.Abs(slopeAcceleration) <= playerStateMachine.Friction;
+
+        if (shouldRemainStopped)
+        {
+            playerStateMachine.groundSpeed = 0f;
+        }
+        else
+        {
+            playerStateMachine.groundSpeed += slopeAcceleration * fixedDeltaTime;
+        }
 
         playerStateMachine.groundSpeed = Mathf.Clamp(
             playerStateMachine.groundSpeed,

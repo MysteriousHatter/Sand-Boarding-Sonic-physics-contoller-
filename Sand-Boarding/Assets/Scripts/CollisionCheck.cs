@@ -42,6 +42,10 @@ public class CollisionCheck : MonoBehaviour
     [SerializeField] private float pushSensorHeight = 0.3f; // vertical offset above raycastOrigin, along world up
     [SerializeField, Range(0f, 15f)] private float pushSensorAngleTolerance = 5f; // slack around 0/90/180/270
     [SerializeField, Range(-1f, 1f)] private float floorAlignmentThreshold = 0.3f;
+    [SerializeField, Min(0f)]
+    private float normalBlendDistance = 0.25f;
+    [SerializeField, Range(0f, 90f)]
+    private float normalBlendMaxAngle = 60f;
     RaycastHit2D pushHitLeft;
     RaycastHit2D pushHitRight;
 
@@ -308,7 +312,18 @@ public class CollisionCheck : MonoBehaviour
 
         if (isGrounded)
         {
-            SurfaceNormal = PrimaryGroundSensor.normal;
+            Vector2 resolvedNormal = PrimaryGroundSensor.normal;
+
+            bool canBlendNormals = PrimaryGroundSensor.hit && SecondaryGroundSensor.hit && PrimaryGroundSensor.collider == SecondaryGroundSensor.collider &&
+                Mathf.Abs(PrimaryGroundSensor.signedDistance - SecondaryGroundSensor.signedDistance) <= normalBlendDistance &&
+                Vector2.Angle(PrimaryGroundSensor.normal, SecondaryGroundSensor.normal) <= normalBlendMaxAngle;
+
+            if (canBlendNormals)
+            {
+                resolvedNormal = (PrimaryGroundSensor.normal + SecondaryGroundSensor.normal).normalized;
+            }
+
+            SurfaceNormal = resolvedNormal;
             SurfacePoint = PrimaryGroundSensor.point;
             SurfaceDistance = PrimaryGroundSensor.signedDistance;
 
