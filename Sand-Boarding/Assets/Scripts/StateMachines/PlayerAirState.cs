@@ -84,10 +84,17 @@ public class PlayerAirState : PlayerBaseState
 
             MoveInPhysicsStep(finalDisplacement / fixedDeltaTime, fixedDeltaTime);
 
+            // Convert airborne velocity into surface-relative ground speed.
             Vector2 surfaceTangent = new Vector2(ground.normal.y, -ground.normal.x).normalized;
+
             playerStateMachine.groundSpeed = Vector2.Dot(airVelocity, surfaceTangent);
+
+            // Prevent old airborne momentum from being reused next time.
+            playerStateMachine.forceReciever.ClearImpact();
             playerStateMachine.forceReciever.verticalVelocity = 0f;
+
             playerStateMachine.SwitchState(new PlayerMovementState(playerStateMachine));
+
             return;
         }
 

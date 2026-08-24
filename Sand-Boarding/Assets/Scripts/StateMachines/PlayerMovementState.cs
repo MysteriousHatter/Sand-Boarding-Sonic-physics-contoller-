@@ -24,10 +24,10 @@ public class PlayerMovementState : PlayerBaseState
 
     public override void FixedTick(float fixedDeltaTime)
     {
-        CollisionCheck collision = playerStateMachine.collisionCheck;
+            CollisionCheck collision = playerStateMachine.collisionCheck;
 
             // Current-position check.
-            //collision.RefreshSensors(Vector2.zero);
+            collision.RefreshSensors(Vector2.zero);
 
             if (!collision.isGrounded)
             {
@@ -104,6 +104,9 @@ public class PlayerMovementState : PlayerBaseState
 
             if (!collision.isGrounded)
             {
+                // The predicted position might have landed in a tiny collider
+                // seam or just beyond the edge of one ray.
+                collision.RefreshSensors(Vector2.zero);
                 MoveInPhysicsStep(tangent * playerStateMachine.groundSpeed, fixedDeltaTime);
 
                 DetachFromSurface();
@@ -140,11 +143,12 @@ public class PlayerMovementState : PlayerBaseState
 
         float outwardForce = playerStateMachine.collisionCheck.CurrentSurfaceState == CollisionCheck.SurfaceState.Floor ? 0f : playerStateMachine.detachForce;
         
-        Vector2 detachVelocity = tangent * playerStateMachine.groundSpeed
-            + normal * outwardForce;
-        playerStateMachine.forceReciever.AddForce(detachVelocity);
+        Vector2 detachVelocity = tangent * playerStateMachine.groundSpeed + normal * outwardForce;
+        playerStateMachine.forceReciever.SetImpact(detachVelocity);
 
-        playerStateMachine.detachTimer = playerStateMachine.detachDuration;
+        bool leavingFloor = playerStateMachine.collisionCheck.CurrentSurfaceState == CollisionCheck.SurfaceState.Floor;
+
+        playerStateMachine.detachTimer = leavingFloor ? 0f : playerStateMachine.detachDuration;
     }
 
     public override void Tick(float deltaTime)

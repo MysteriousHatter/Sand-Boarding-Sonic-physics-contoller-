@@ -35,4 +35,16 @@ public class ForceReciever : MonoBehaviour
     {
         verticalVelocity += jumpForce;
     }
+
+    public void SetImpact(Vector2 velocity)
+    {
+        impact = velocity;
+        dampingVelocity = Vector2.zero;
+    }
+
+    public void ClearImpact()
+    {
+        impact = Vector2.zero;
+        dampingVelocity = Vector2.zero;
+    }
 }

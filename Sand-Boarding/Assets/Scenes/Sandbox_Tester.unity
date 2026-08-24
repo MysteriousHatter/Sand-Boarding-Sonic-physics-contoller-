@@ -15478,7 +15478,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ForceReciever
   impact: {x: 0, y: 0}
   verticalVelocity: 0
-  drag: 4.94
+  drag: 2.6
   playerStateMachine: {fileID: 8441571560925677912}
 --- !u!114 &9136557542862113649
 MonoBehaviour:
@@ -15508,7 +15508,7 @@ MonoBehaviour:
   pushRayDistance: 17.1
   pushSensorHeight: 1.17
   pushSensorAngleTolerance: 15
-  floorAlignmentThreshold: 0.42
+  floorAlignmentThreshold: 0.3
 --- !u!114 &9136557542862113655
 MonoBehaviour:
   m_ObjectHideFlags: 0
